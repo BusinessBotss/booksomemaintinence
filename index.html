@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Presupuesto Rápido - Servicios Técnicos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    /* Temas claro/oscuro */
+    :root[data-theme='dark'] { --bg: #000; --text: #fff; --field-bg: rgba(255,255,255,0.1); --border: rgba(255,255,255,0.3); }
+    :root[data-theme='light'] { --bg: #fff; --text: #000; --field-bg: rgba(0,0,0,0.05); --border: rgba(0,0,0,0.2); }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Poppins', sans-serif; background: var(--bg); color: var(--text); }
+    a { color: var(--text); text-decoration: none; }
+    .container { width: 90%; max-width: 500px; margin: 2rem auto; display: flex; flex-direction: column; gap: 1rem; }
+    nav { display: flex; justify-content: space-between; align-items: center; }
+    .lang-btn, #theme-toggle { background: transparent; border: none; color: var(--text); font-weight: 600; cursor: pointer; margin: 0 4px; }
+    .lang-btn.active { text-decoration: underline; }
+    form { background: var(--field-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
+    label { font-weight: 600; }
+    .field { position: relative; }
+    input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); }
+    textarea { resize: vertical; min-height: 80px; }
+    .tooltip { position: absolute; top: 100%; left: 0; font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem; }
+    .btn { padding: 0.75rem; border: none; border-radius: 20px; background: transparent; color: var(--text); font-weight: 600; cursor: pointer; transition: box-shadow 0.3s ease; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn:hover:not(:disabled) { box-shadow: 0 0 6px #ff00cc; }
+    input:focus, select:focus, button:focus { outline: 2px solid #ff00cc; }
+    #summary { background: var(--field-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <div id="lang-switch" aria-label="Language switcher"></div>
+      <button id="theme-toggle" aria-label="Toggle theme">🌙</button>
+    </nav>
+    <p id="intro-text"></p>
+    <form id="quote-form" role="form" aria-labelledby="intro-text">
+      <div class="field">
+        <label for="name" id="label-name"></label>
+        <input type="text" id="name" required aria-required="true" />
+      </div>
+      <div class="field">
+        <label for="address" id="label-address"></label>
+        <input type="text" id="address" required aria-required="true" data-tooltip="Street, number, city" />
+        <span class="tooltip" id="tip-address"></span>
+      </div>
+      <div class="field">
+        <label for="phone" id="label-phone"></label>
+        <input type="tel" id="phone" required aria-required="true" placeholder="+34 600000000" data-tooltip="Format: +34 9 digits" />
+        <span class="tooltip" id="tip-phone"></span>
+      </div>
+      <div class="field">
+        <label for="service" id="label-service"></label>
+        <select id="service" required aria-required="true"></select>
+      </div>
+      <div class="field">
+        <label for="description" id="label-description"></label>
+        <textarea id="description" required aria-required="true"></textarea>
+      </div>
+      <div class="field">
+        <label for="urgency" id="label-urgency"></label>
+        <select id="urgency" required aria-required="true"></select>
+      </div>
+      <button type="submit" id="submit-btn" class="btn" disabled></button>
+    </form>
+    <div id="summary" class="hidden" aria-live="polite"></div>
+  </div>
+
+  <script defer>
+  (function(){
+    const translations = {
+      EN: {
+        intro: "Get a quick quote for technical services at home.",
+        labels: { name: "Name", address: "Address", phone: "Phone Number", service: "Service Type", description: "Job Description", urgency: "Urgency Level" },
+        placeholders: { service: "-- Select Service --", description: "Describe the issue or work needed", urgency: ["Low","Medium","High"] },
+        services: ["General Maintenance","Electrical Repair","Masonry Work","General Labor"],
+        submit: "Get Quote",
+        summaryIntro: "Quote Summary:",
+        summaryWait: "Awaiting technician confirmation..."
+      },
+      ES: {
+        intro: "Obtén un presupuesto rápido para servicios técnicos a domicilio.",
+        labels: { name: "Nombre", address: "Dirección", phone: "Número de Teléfono", service: "Tipo de Servicio", description: "Descripción del Trabajo", urgency: "Nivel de Urgencia" },
+        placeholders: { service: "-- Selecciona Servicio --", description: "Describe el problema o trabajo requerido", urgency: ["Baja","Media","Alta"] },
+        services: ["Mantenimiento General","Reparación Eléctrica","Trabajos de Albañilería","Mano de Obra General"],
+        submit: "Obtener Presupuesto",
+        summaryIntro: "Resumen del Presupuesto:",
+        summaryWait: "Esperando confirmación del técnico..."
+      },
+      FR: {
+        intro: "Obtenez un devis rapide pour des services techniques à domicile.",
+        labels: { name: "Nom", address: "Adresse", phone: "Numéro de Téléphone", service: "Type de Service", description: "Description du Travail", urgency: "Niveau d'Urgence" },
+        placeholders: { service: "-- Sélectionnez Service --", description: "Décrivez le problème ou le travail nécessaire", urgency: ["Faible","Moyenne","Élevée"] },
+        services: ["Maintenance Générale","Réparation Électrique","Travaux de Maçonnerie","Main-d'œuvre Générale"],
+        submit: "Obtenir Devis",
+        summaryIntro: "Résumé du Devis :",
+        summaryWait: "En attente de confirmation du technicien..."
+      },
+      DE: {
+        intro: "Erhalten Sie schnell einen Kostenvoranschlag für technische Dienstleistungen zu Hause.",
+        labels: { name: "Name", address: "Adresse", phone: "Telefonnummer", service: "Serviceart", description: "Arbeitsbeschreibung", urgency: "Dringlichkeitsstufe" },
+        placeholders: { service: "-- Service auswählen --", description: "Beschreiben Sie das Problem oder die erforderliche Arbeit", urgency: ["Niedrig","Mittel","Hoch"] },
+        services: ["Allgemeine Wartung","Elektrische Reparatur","Maurerarbeiten","Allgemeine Arbeit"],
+        submit: "Angebot Anfordern",
+        summaryIntro: "Angebotsübersicht:",
+        summaryWait: "Warte auf Bestätigung des Technikers..."
+      },
+      IT: {
+        intro: "Ottieni un preventivo rapido per servizi tecnici a domicilio.",
+        labels: { name: "Nome", address: "Indirizzo", phone: "Numero di Telefono", service: "Tipo di Servizio", description: "Descrizione del Lavoro", urgency: "Livello di Urgenza" },
+        placeholders: { service: "-- Seleziona Servizio --", description: "Descrivi il problema o il lavoro necessario", urgency: ["Bassa","Media","Alta"] },
+        services: ["Manutenzione Generale","Riparazioni Elettriche","Lavori di Muratura","Manodopera Generale"],
+        submit: "Richiedi Preventivo",
+        summaryIntro: "Riepilogo Preventivo:",
+        summaryWait: "In attesa di conferma dal tecnico..."
+      }
+    };
+    const phoneRegex = /^\+34\s?\d{9}$/;
+    let lang = localStorage.getItem('lang') || 'EN';
+
+    const refs = {
+      langSwitch: document.getElementById('lang-switch'),
+      themeToggle: document.getElementById('theme-toggle'),
+      intro: document.getElementById('intro-text'),
+      labels: Object.fromEntries(['name','address','phone','service','description','urgency'].map(k => [k, document.getElementById(`label-${k}`)])),
+      fields: Object.fromEntries(['name','address','phone','service','description','urgency'].map(k => [k, document.getElementById(k)])),
+      tips: { address: document.getElementById('tip-address'), phone: document.getElementById('tip-phone') },
+      submitBtn: document.getElementById('submit-btn'),summary: document.getElementById('summary')
+    };
+
+    function init() {
+      renderLangButtons(); applyLanguage(lang);
+      applyTheme(localStorage.getItem('theme') || 'dark');
+      refs.themeToggle.addEventListener('click', toggleTheme);
+      Object.values(refs.fields).forEach(f => f.addEventListener('input', validateForm));
+      ['address','phone'].forEach(k => {
+        refs.fields[k].addEventListener('focus', () => refs.tips[k].textContent = refs.fields[k].dataset.tooltip);
+        refs.fields[k].addEventListener('blur', () => refs.tips[k].textContent = '');
+      });
+      refs.submitBtn.addEventListener('click', onSubmit);
+    }
+
+    function renderLangButtons() {
+      Object.keys(translations).forEach(code => {
+        const btn = document.createElement('button');btn.textContent = code;btn.className = 'lang-btn';
+        btn.addEventListener('click', () => setLanguage(code));refs.langSwitch.appendChild(btn);
+      });
+    }
+    function setLanguage(code) { lang = code; localStorage.setItem('lang', code); applyLanguage(); }
+    function applyLanguage() {
+      const t = translations[lang];
+      document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.textContent === lang));
+      refs.intro.textContent = t.intro;
+      Object.keys(refs.labels).forEach(k => refs.labels[k].textContent = t.labels[k]);
+      renderServiceOptions(t.services, t.placeholders.service);
+      refs.fields.description.placeholder = t.placeholders.description;
+      renderUrgencyOptions(t.placeholders.urgency);
+      refs.submitBtn.textContent = t.submit;
+      validateForm();
+    }
+    function renderServiceOptions(opts, placeholder) {
+      const sel = refs.fields.service; sel.innerHTML = `<option value="" disabled selected>${placeholder}</option>`;
+      opts.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
+    }
+    function renderUrgencyOptions(opts) {
+      const sel = refs.fields.urgency; sel.innerHTML = '';
+      opts.forEach(val => { const o = document.createElement('option'); o.value = val.toLowerCase(); o.textContent = val; sel.appendChild(o); });
+    }
+
+    function validateForm() {
+      const f = refs.fields;
+      const filled = f.name.value.trim() && f.address.value.trim() && phoneRegex.test(f.phone.value) && f.service.value && f.description.value.trim() && f.urgency.value;
+      refs.submitBtn.disabled = !filled;
+    }
+    function onSubmit(e) {
+      e.preventDefault(); const t = translations[lang]; const f = refs.fields;
+      refs.summary.classList.remove('hidden');
+      refs.summary.innerHTML = `<strong>${t.summaryIntro}</strong>` +
+        `<p>${t.labels.name}: ${f.name.value}</p>` +
+        `<p>${t.labels.address}: ${f.address.value}</p>` +
+        `<p>${t.labels.phone}: ${f.phone.value}</p>` +
+        `<p>${t.labels.service}: ${f.service.value}</p>` +
+        `<p>${t.labels.description}: ${f.description.value}</p>` +
+        `<p>${t.labels.urgency}: ${f.urgency.options[f.urgency.selectedIndex].text}</p>` +
+        `<p><em>${t.summaryWait}</em></p>`;
+      refs.submitBtn.disabled = true;
+    }
+
+    function toggleTheme() { const next = document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'; applyTheme(next); }
+    function applyTheme(theme) { document.documentElement.setAttribute('data-theme', theme); localStorage.setItem('theme', theme); }
+
+    document.addEventListener('DOMContentLoaded', init);
+  })();
+  </script>
+</body>
+</html>
